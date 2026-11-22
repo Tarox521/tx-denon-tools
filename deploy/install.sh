@@ -28,9 +28,9 @@ fi
 apt-get install -y python3 python3-venv python3-pip ca-certificates
 
 if [[ "$SRC" != "$APP_DIR" ]]; then
-  mkdir -p "$APP_DIR"
+  mkdir -p "$APP_DIR/web" "$APP_DIR/deploy"
   cp "$SRC/denon_eq.py" "$SRC/requirements.txt" "$APP_DIR/"
-  mkdir -p "$APP_DIR/deploy"
+  cp "$SRC/web/index.html" "$APP_DIR/web/"
   cp "$SRC/deploy/denon-eq.service" "$SRC/deploy/denon-eq.env.example" "$SRC/deploy/install.sh" "$APP_DIR/deploy/"
 fi
 

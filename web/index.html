@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Denon Mischpult</title>
+<style>
+:root{
+  --bg:#090909;
+  --panel:#141416;
+  --panel-2:#1c1c1f;
+  --text:#ece7df;
+  --muted:#9a9388;
+  --accent:#e8a04a;
+  --accent-2:#f2c27a;
+  --line:rgba(255,255,255,0.08);
+  --track:#050505;
+  --fader:#c8c2b8;
+  --track-h:360px;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;background:radial-gradient(1200px 500px at 50% -10%,#2a241c,transparent 55%),var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif}
+.wrap{max-width:1180px;margin:18px auto;padding:18px 18px 16px;background:linear-gradient(180deg,#1a1a1d,#101012);border:1px solid var(--line);border-radius:16px;box-shadow:0 18px 50px rgba(0,0,0,.45)}
+.top{display:grid;grid-template-columns:minmax(280px,340px) 1fr;gap:16px;align-items:center;min-height:84px}
+.master{display:flex;align-items:center;gap:10px;padding:10px 12px;background:var(--panel);border:1px solid var(--line);border-radius:12px}
+.master-copy{display:flex;flex-direction:column;gap:2px;min-width:78px}
+.master-copy span{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.master-value{font-variant-numeric:tabular-nums;font-size:18px;color:var(--accent-2)}
+.master input[type=range]{flex:1;accent-color:var(--accent);height:22px}
+.mute{width:64px;height:42px;border-radius:10px;border:1px solid var(--line);background:#222;color:var(--text);font-weight:650;cursor:pointer}
+.mute.on{background:#8d2b24;border-color:#e07a72;color:#fff}
+.modes{display:flex;justify-content:flex-end;gap:8px}
+.mode{min-width:120px;height:48px;border-radius:12px;border:1px solid var(--line);background:var(--panel);color:var(--muted);font-size:16px;font-weight:650;cursor:pointer}
+.mode.active{color:#1a1208;background:linear-gradient(180deg,var(--accent-2),var(--accent));border-color:transparent}
+.presets{margin-top:14px;padding:12px;border-radius:12px;background:rgba(0,0,0,.22);border:1px solid var(--line);min-height:148px}
+.preset-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.preset-input,.preset-select{flex:1;min-width:0;height:36px;padding:0 10px;border-radius:8px;border:1px solid var(--line);background:#0d0d0f;color:var(--text);font-size:14px}
+.preset-btn{height:36px;padding:0 12px;border-radius:8px;border:1px solid rgba(232,160,74,.45);background:rgba(232,160,74,.12);color:var(--accent-2);cursor:pointer;white-space:nowrap}
+.preset-btn.danger{border-color:rgba(224,122,114,.5);background:rgba(141,43,36,.25);color:#f0b2ac}
+.preset-message{min-height:18px;font-size:12px;color:var(--muted)}
+.quick{display:flex;gap:8px;flex-wrap:wrap;align-items:center;min-height:40px;margin-top:4px}
+.quick button{height:34px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--panel-2);color:var(--text);cursor:pointer}
+.deck{min-height:470px;display:flex;justify-content:center;align-items:flex-end;gap:8px;padding:18px 4px 0;overflow-x:auto}
+.band{width:92px;display:flex;flex-direction:column;align-items:center;flex:0 0 auto}
+.band .label{height:34px;display:flex;align-items:flex-end;justify-content:center;text-align:center;font-size:12px;line-height:1.15;color:#d9d3c8;margin-bottom:8px}
+.band .value{margin-top:12px;font-size:13px;color:var(--accent);font-variant-numeric:tabular-nums}
+.track-wrap{position:relative;width:88px;height:var(--track-h)}
+.fader{position:relative;width:28px;height:100%}
+.track{position:absolute;width:6px;height:100%;left:50%;transform:translateX(-50%);background:var(--track);border-radius:3px;box-shadow:inset 0 0 0 1px rgba(255,255,255,.04)}
+.zero-line,.value-line{position:absolute;left:0;right:0;height:1px;background:rgba(255,255,255,.28);pointer-events:none}
+.value-line{background:rgba(255,255,255,.7)}
+.fader input[type=range]{-webkit-appearance:none;appearance:none;position:absolute;top:50%;left:50%;width:var(--track-h);height:36px;transform:translate(-50%,-50%) rotate(-90deg);background:transparent;outline:none;cursor:pointer;z-index:3}
+.fader input[type=range]::-webkit-slider-runnable-track{height:6px;background:transparent}
+.fader input[type=range]::-moz-range-track{height:6px;background:transparent}
+.fader input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:34px;height:14px;border-radius:3px;background:var(--fader);border:1px solid #111}
+.fader input[type=range]::-moz-range-thumb{width:34px;height:14px;border-radius:3px;background:var(--fader);border:1px solid #111}
+.scale{position:absolute;right:0;top:0;height:100%;width:52px;font-size:10px;color:#b7b1a6}
+.scale-row{position:absolute;left:0;display:flex;align-items:center;gap:4px;transform:translateY(-50%)}
+.scale-tick{width:10px;height:1px;background:#b7b1a6}
+.status{min-height:22px;margin-top:8px;text-align:center;color:var(--muted);font-size:13px}
+.status.err{color:#f0b2ac}
+@media(max-width:760px){
+  .top{grid-template-columns:1fr}
+  .modes{justify-content:stretch}
+  .mode{flex:1}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="master">
+      <div class="master-copy"><span>Lautstärke</span><div id="masterValue" class="master-value">–</div></div>
+      <input id="master" type="range" min="0" max="98" step="0.5" value="0" aria-label="Lautstärke">
+      <button id="mute" class="mute" type="button">Mute</button>
+    </div>
+    <div class="modes">
+      <button id="modeEq" class="mode active" type="button">EQ</button>
+      <button id="modeLevels" class="mode" type="button">Pegel</button>
+    </div>
+  </header>
+  <section class="presets">
+    <div class="preset-row">
+      <input id="presetName" class="preset-input" type="text" placeholder="Preset-Name">
+      <button id="btnSavePreset" class="preset-btn" type="button">Speichern</button>
+    </div>
+    <div class="preset-row">
+      <select id="presetList" class="preset-select"><option value="">Preset wählen</option></select>
+      <button id="btnLoadPreset" class="preset-btn" type="button">Laden</button>
+      <button id="btnDeletePreset" class="preset-btn danger" type="button">Löschen</button>
+    </div>
+    <div id="presetMessage" class="preset-message"></div>
+    <div id="quick" class="quick"></div>
+  </section>
+  <div id="deck" class="deck"></div>
+  <div id="status" class="status">Bereit.</div>
+</div>
+<script>
+const EQ_BANDS = [
+  {key:"63", label:"63 Hz"},{key:"125", label:"125 Hz"},{key:"250", label:"250 Hz"},
+  {key:"500", label:"500 Hz"},{key:"1k", label:"1 kHz"},{key:"2k", label:"2 kHz"},
+  {key:"4k", label:"4 kHz"},{key:"8k", label:"8 kHz"},{key:"16k", label:"16 kHz"}
+];
+const memoryPresets = {eq:{}, levels:{}};
+let previewVolume = {volume:40, mute:false};
+if(location.protocol === "file:"){
+  window.fetch = async (url, opts={}) => {
+    const target = String(url);
+    const method = (opts.method || "GET").toUpperCase();
+    const body = opts.body ? JSON.parse(opts.body) : null;
+    const respond = (data, status=200) => ({ok:status<300, status, json:async()=>data, text:async()=>JSON.stringify(data)});
+    if(target.startsWith("/eq")) return respond({bands:{"63":1.5,"125":0,"250":-1,"500":-2,"1k":-0.5,"2k":0,"4k":1,"8k":2,"16k":0.5}});
+    if(target.startsWith("/levels")) return respond({channels:[
+      {id:"0",name:"Front L",db:-2.5},{id:"1",name:"Center",db:-4},{id:"2",name:"Front R",db:-2.5},
+      {id:"4",name:"Surround R",db:-2.5},{id:"5",name:"Surround Back R",db:6},{id:"7",name:"Surround Back L",db:6},{id:"8",name:"Surround L",db:-2.5}
+    ], min:-12, max:12, step:0.5});
+    if(target.startsWith("/volume")){
+      if(method === "POST" && body) Object.assign(previewVolume, body);
+      return respond(previewVolume);
+    }
+    if(target.startsWith("/set_eq")) return respond({ok:true});
+    const preset = target.match(/^\/presets\/(eq|levels)(?:\/(.*))?$/);
+    if(preset){
+      const kind = preset[1];
+      const name = preset[2] ? decodeURIComponent(preset[2]) : "";
+      if(!name) return respond({presets:memoryPresets[kind]});
+      if(method === "PUT"){ memoryPresets[kind][name] = body; return respond({ok:true}); }
+      if(method === "DELETE"){ delete memoryPresets[kind][name]; return respond({ok:true}); }
+    }
+    return respond({error:"preview"}, 404);
+  };
+}
+
+const deck = document.getElementById("deck");
+const statusEl = document.getElementById("status");
+const quick = document.getElementById("quick");
+let page = "eq";
+let range = {min:-20, max:6};
+let items = EQ_BANDS.map(band => ({...band}));
+let currentValues = Object.fromEntries(EQ_BANDS.map(band => [band.key, 0]));
+let presets = {};
+let lastSent = null;
+let sendTimer = null;
+let masterTimer = null;
+let muted = false;
+
+function kind(){ return page === "levels" ? "levels" : "eq"; }
+function setStatus(text, isError){
+  statusEl.textContent = text;
+  statusEl.classList.toggle("err", !!isError);
+}
+function topPct(value){
+  return (range.max - value) / (range.max - range.min) * 100;
+}
+function buildDeck(){
+  deck.innerHTML = "";
+  items.forEach(item => {
+    const band = document.createElement("div");
+    band.className = "band";
+    const label = document.createElement("div");
+    label.className = "label";
+    label.textContent = item.label;
+    const wrap = document.createElement("div");
+    wrap.className = "track-wrap";
+    const fader = document.createElement("div");
+    fader.className = "fader";
+    const track = document.createElement("div");
+    track.className = "track";
+    const zero = document.createElement("div");
+    zero.className = "zero-line";
+    const valueLine = document.createElement("div");
+    valueLine.className = "value-line";
+    const slider = document.createElement("input");
+    slider.type = "range";
+    slider.min = range.min;
+    slider.max = range.max;
+    slider.step = "0.5";
+    slider.value = currentValues[item.key] ?? 0;
+    slider.dataset.band = item.key;
+    slider.addEventListener("input", onSlide);
+    slider.addEventListener("change", onSlideFinal);
+    fader.append(track, zero, valueLine, slider);
+    const scale = document.createElement("div");
+    scale.className = "scale";
+    const step = range.max - range.min > 24 ? 4 : 2;
+    for(let mark = range.max; mark >= range.min; mark -= step){
+      const row = document.createElement("div");
+      row.className = "scale-row";
+      row.style.top = topPct(mark) + "%";
+      const tick = document.createElement("div");
+      tick.className = "scale-tick";
+      const text = document.createElement("span");
+      text.textContent = mark;
+      row.append(tick, text);
+      scale.append(row);
+    }
+    wrap.append(fader, scale);
+    const value = document.createElement("div");
+    value.className = "value";
+    value.textContent = Number(slider.value).toFixed(1) + " dB";
+    band.append(label, wrap, value);
+    deck.append(band);
+    zero.style.top = topPct(0) + "%";
+    valueLine.style.top = topPct(Number(slider.value)) + "%";
+  });
+}
+function paintSlider(slider, value){
+  slider.value = value;
+  const valueLine = slider.parentElement.querySelector(".value-line");
+  if(valueLine) valueLine.style.top = topPct(value) + "%";
+  const readout = slider.parentElement.parentElement.nextSibling;
+  if(readout) readout.textContent = Number(value).toFixed(1) + " dB";
+}
+function showValues(values){
+  Object.keys(currentValues).forEach(key => {
+    if(typeof values[key] === "number") currentValues[key] = values[key];
+  });
+  items.forEach(item => {
+    const slider = deck.querySelector(`input[data-band="${item.key}"]`);
+    if(slider) paintSlider(slider, currentValues[item.key]);
+  });
+}
+function onSlide(event){
+  const key = event.target.dataset.band;
+  const value = Number(event.target.value);
+  currentValues[key] = value;
+  paintSlider(event.target, value);
+  clearTimeout(sendTimer);
+  sendTimer = setTimeout(sendAll, 160);
+}
+function onSlideFinal(event){
+  clearTimeout(sendTimer);
+  sendAll();
+}
+function sendAll(){
+  const snapshot = JSON.stringify(currentValues);
+  if(snapshot === lastSent) return;
+  lastSent = snapshot;
+  const url = page === "levels" ? "/levels" : "/set_eq";
+  setStatus(page === "levels" ? "Sende Pegel…" : "Sende EQ…");
+  fetch(url, {method:"POST", headers:{"Content-Type":"application/json"}, body:snapshot})
+    .then(async response => {
+      if(!response.ok) throw new Error("HTTP " + response.status);
+      setStatus("Gesendet.");
+    })
+    .catch(() => setStatus("Senden fehlgeschlagen.", true));
+}
+async function loadPage(){
+  setStatus(page === "levels" ? "Lese Pegel…" : "Lese EQ…");
+  const response = await fetch(page === "levels" ? "/levels" : "/eq");
+  if(!response.ok) throw new Error("HTTP " + response.status);
+  const data = await response.json();
+  if(page === "levels"){
+    range = {min:data.min ?? -12, max:data.max ?? 12};
+    items = (data.channels || []).map(channel => ({key:String(channel.id), label:channel.name}));
+    currentValues = {};
+    items.forEach(item => {
+      const found = (data.channels || []).find(channel => String(channel.id) === item.key);
+      currentValues[item.key] = found ? found.db : 0;
+    });
+  }else{
+    range = {min:-20, max:6};
+    items = EQ_BANDS.map(band => ({...band}));
+    currentValues = Object.fromEntries(EQ_BANDS.map(band => [band.key, 0]));
+    Object.entries(data.bands || {}).forEach(([key, value]) => {
+      if(typeof value === "number") currentValues[key] = value;
+    });
+  }
+  buildDeck();
+  lastSent = JSON.stringify(currentValues);
+  setStatus("Bereit.");
+}
+function refreshPresetList(){
+  const select = document.getElementById("presetList");
+  const current = select.value;
+  select.innerHTML = '<option value="">Preset wählen</option>';
+  Object.keys(presets).sort().forEach(name => {
+    const option = document.createElement("option");
+    option.value = name;
+    option.textContent = name;
+    select.append(option);
+  });
+  if(current && presets[current]) select.value = current;
+  quick.innerHTML = "";
+  Object.keys(presets).sort().forEach(name => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = name;
+    button.addEventListener("click", () => applyPreset(name));
+    quick.append(button);
+  });
+}
+async function loadPresets(){
+  const response = await fetch("/presets/" + kind());
+  if(!response.ok) throw new Error("HTTP " + response.status);
+  const data = await response.json();
+  presets = data.presets || {};
+  refreshPresetList();
+}
+function setPresetMessage(text){
+  document.getElementById("presetMessage").textContent = text || "";
+}
+async function applyPreset(name){
+  if(!presets[name]){
+    setPresetMessage("Bitte ein Preset wählen.");
+    return;
+  }
+  showValues(presets[name]);
+  lastSent = null;
+  sendAll();
+  setPresetMessage("Preset „" + name + "“ geladen.");
+}
+async function loadVolume(){
+  const response = await fetch("/volume");
+  if(!response.ok) throw new Error("HTTP " + response.status);
+  const data = await response.json();
+  const slider = document.getElementById("master");
+  slider.value = data.volume;
+  document.getElementById("masterValue").textContent = Number(data.volume).toFixed(1);
+  muted = !!data.mute;
+  document.getElementById("mute").classList.toggle("on", muted);
+}
+document.getElementById("master").addEventListener("input", event => {
+  const value = Number(event.target.value);
+  document.getElementById("masterValue").textContent = value.toFixed(1);
+  clearTimeout(masterTimer);
+  masterTimer = setTimeout(() => {
+    fetch("/volume", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({volume:value})})
+      .catch(() => setStatus("Lautstärke nicht gesendet.", true));
+  }, 160);
+});
+document.getElementById("mute").addEventListener("click", () => {
+  muted = !muted;
+  document.getElementById("mute").classList.toggle("on", muted);
+  fetch("/volume", {method:"POST", headers:{"Content-Type":"application/json"}, body:JSON.stringify({mute:muted})})
+    .catch(() => setStatus("Mute nicht gesendet.", true));
+});
+document.getElementById("modeEq").addEventListener("click", () => switchPage("eq"));
+document.getElementById("modeLevels").addEventListener("click", () => switchPage("levels"));
+async function switchPage(next){
+  if(next === page) return;
+  page = next;
+  document.getElementById("modeEq").classList.toggle("active", page === "eq");
+  document.getElementById("modeLevels").classList.toggle("active", page === "levels");
+  setPresetMessage("");
+  try{
+    await loadPresets();
+    await loadPage();
+  }catch(error){
+    setStatus("Seite nicht geladen.", true);
+  }
+}
+document.getElementById("btnSavePreset").addEventListener("click", async () => {
+  const name = document.getElementById("presetName").value.trim();
+  if(!name){ setPresetMessage("Bitte einen Namen eingeben."); return; }
+  const response = await fetch("/presets/" + kind() + "/" + encodeURIComponent(name), {
+    method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(currentValues)
+  });
+  if(!response.ok){ setPresetMessage("Preset nicht gespeichert."); return; }
+  presets[name] = {...currentValues};
+  refreshPresetList();
+  document.getElementById("presetList").value = name;
+  setPresetMessage("Preset „" + name + "“ gespeichert.");
+});
+document.getElementById("btnLoadPreset").addEventListener("click", () => applyPreset(document.getElementById("presetList").value));
+document.getElementById("btnDeletePreset").addEventListener("click", async () => {
+  const name = document.getElementById("presetList").value;
+  if(!name || !presets[name]){ setPresetMessage("Bitte ein Preset wählen."); return; }
+  const response = await fetch("/presets/" + kind() + "/" + encodeURIComponent(name), {method:"DELETE"});
+  if(!response.ok){ setPresetMessage("Preset nicht gelöscht."); return; }
+  delete presets[name];
+  refreshPresetList();
+  setPresetMessage("Preset „" + name + "“ gelöscht.");
+});
+
+loadVolume().catch(() => setStatus("Lautstärke nicht lesbar.", true));
+loadPresets().catch(() => setPresetMessage("Presets nicht geladen."));
+loadPage().catch(() => setStatus("Pegel nicht lesbar.", true));
+</script>
+</body>
+</html>

@@ -107,7 +107,7 @@ stage_app() {
   if [[ -n "${REPO_ROOT:-}" ]]; then
     local archive
     archive="$(mktemp /tmp/tx-denon-tools.XXXXXX.tgz)"
-    tar -C "$REPO_ROOT" -czf "$archive" denon_eq.py requirements.txt deploy
+    tar -C "$REPO_ROOT" -czf "$archive" denon_eq.py requirements.txt deploy web
     pct push "$ctid" "$archive" /tmp/tx-denon-tools.tgz
     rm -f "$archive"
     pct exec "$ctid" -- tar -xzf /tmp/tx-denon-tools.tgz -C /opt/tx-denon-tools
