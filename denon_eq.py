@@ -1,6 +1,9 @@
 from flask import Flask, request, jsonify, Response
 from flask_cors import CORS
+import json
 import os
+import threading
+from pathlib import Path
 import requests, urllib.parse, time
 import urllib3
 
@@ -15,6 +18,9 @@ RECV_PORT = int(os.environ.get("DENON_PORT", "10443"))
 LISTEN_HOST = os.environ.get("LISTEN_HOST", "0.0.0.0")
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "80"))
 RECV_BASE = f"https://{RECV_HOST}:{RECV_PORT}"
+PRESET_PATH = Path(os.environ.get("PRESET_PATH", "/var/lib/tx-denon-tools/presets.json"))
+BANDS = ("63", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+_preset_lock = threading.Lock()
 
 # Mapping: unsere dB-Werte (-20..+6) direkt auf Denon-Rohwert (-200..+60)
 def db_to_val(db: float) -> int:
@@ -388,7 +394,7 @@ const deb = {};
 let currentValues = {"63":0,"125":0,"250":0,"500":0,"1k":0,"2k":0,"4k":0,"8k":0,"16k":0};
 let lastSentSnapshot = null;
 
-/* Preset-Storage im Browser */
+/* Presets liegen auf dem Server. Die letzte Faderstellung bleibt im Browser. */
 const PRESET_STORAGE_KEY = "denonEqPresetsV1";
 const LAST_VALUES_STORAGE_KEY = "denonEqLastValuesV1";
 let presets = {};
@@ -520,25 +526,39 @@ function sendAll(){
 
 /* --- Presets --- */
 
-function loadPresetsFromStorage(){
+function loadPresetsFromServer(){
+  return fetch('/presets').then(async r=>{
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const j = await r.json();
+    presets = (j && j.presets && typeof j.presets === 'object') ? j.presets : {};
+  });
+}
+
+function browserPresets(){
   try{
     const raw = localStorage.getItem(PRESET_STORAGE_KEY);
-    if(!raw) return;
+    if(!raw) return {};
     const parsed = JSON.parse(raw);
-    if(parsed && typeof parsed === 'object'){
-      presets = parsed;
-    }
+    return (parsed && typeof parsed === 'object') ? parsed : {};
   }catch(e){
-    console.warn('Konnte Presets nicht laden:', e);
+    return {};
   }
 }
 
-function savePresetsToStorage(){
-  try{
-    localStorage.setItem(PRESET_STORAGE_KEY, JSON.stringify(presets));
-  }catch(e){
-    console.warn('Konnte Presets nicht speichern:', e);
-  }
+function migrateBrowserPresets(){
+  const local = browserPresets();
+  const names = Object.keys(local);
+  if(!names.length || Object.keys(presets).length) return Promise.resolve();
+  return Promise.all(names.map(name => fetch('/presets/' + encodeURIComponent(name), {
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(local[name])
+  }).then(r=>{
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+  }))).then(()=>{
+    presets = local;
+    localStorage.removeItem(PRESET_STORAGE_KEY);
+  });
 }
 
 function refreshPresetList(){
@@ -562,14 +582,16 @@ function setPresetMessage(msg){
 }
 
 function initPresetsUI(){
-  loadPresetsFromStorage();
-  refreshPresetList();
-
   const nameInput = document.getElementById('presetName');
   const btnSave = document.getElementById('btnSavePreset');
   const btnLoad = document.getElementById('btnLoadPreset');
   const btnDelete = document.getElementById('btnDeletePreset');
   const select = document.getElementById('presetList');
+
+  loadPresetsFromServer()
+    .then(()=>migrateBrowserPresets().catch(()=>{}))
+    .then(()=>refreshPresetList())
+    .catch(()=>setPresetMessage('Presets konnten nicht geladen werden.'));
 
   if(btnSave){
     btnSave.addEventListener('click', ()=>{
@@ -578,10 +600,17 @@ function initPresetsUI(){
         setPresetMessage('Bitte einen Namen für das Preset eingeben.');
         return;
       }
-      presets[name] = {...currentValues};
-      savePresetsToStorage();
-      refreshPresetList();
-      setPresetMessage(`Preset „${name}“ gespeichert.`);
+      fetch('/presets/' + encodeURIComponent(name), {
+        method:'PUT',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(currentValues)
+      }).then(async r=>{
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        presets[name] = {...currentValues};
+        refreshPresetList();
+        if(select) select.value = name;
+        setPresetMessage(`Preset „${name}“ gespeichert.`);
+      }).catch(()=>setPresetMessage('Preset konnte nicht gespeichert werden.'));
     });
   }
 
@@ -604,10 +633,12 @@ function initPresetsUI(){
         setPresetMessage('Kein gültiges Preset zum Löschen ausgewählt.');
         return;
       }
-      delete presets[name];
-      savePresetsToStorage();
-      refreshPresetList();
-      setPresetMessage(`Preset „${name}“ gelöscht.`);
+      fetch('/presets/' + encodeURIComponent(name), {method:'DELETE'}).then(async r=>{
+        if(!r.ok) throw new Error('HTTP ' + r.status);
+        delete presets[name];
+        refreshPresetList();
+        setPresetMessage(`Preset „${name}“ gelöscht.`);
+      }).catch(()=>setPresetMessage('Preset konnte nicht gelöscht werden.'));
     });
   }
 }
@@ -675,9 +706,85 @@ initPresetsUI();
 </html>
 """
 
+def _clean_preset_name(name: str) -> str | None:
+    name = (name or "").strip()
+    if not name or len(name) > 80:
+        return None
+    if any(char in name for char in "/\\\x00"):
+        return None
+    return name
+
+
+def _clean_bands(data) -> dict | None:
+    if not isinstance(data, dict):
+        return None
+    cleaned = {}
+    for key in BANDS:
+        if key not in data:
+            return None
+        try:
+            value = float(data[key])
+        except (TypeError, ValueError):
+            return None
+        if value < -20.0 or value > 6.0:
+            return None
+        cleaned[key] = value
+    return cleaned
+
+
+def _read_presets() -> dict:
+    if not PRESET_PATH.is_file():
+        return {}
+    try:
+        data = json.loads(PRESET_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return data
+
+
+def _write_presets(presets: dict) -> None:
+    PRESET_PATH.parent.mkdir(parents=True, exist_ok=True)
+    temporary = PRESET_PATH.with_suffix(".json.tmp")
+    temporary.write_text(json.dumps(presets, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temporary.replace(PRESET_PATH)
+
+
 @app.route("/", methods=["GET"])
 def index():
     return Response(HTML_UI, mimetype="text/html")
+
+
+@app.route("/presets", methods=["GET"])
+def list_presets():
+    with _preset_lock:
+        return jsonify({"presets": _read_presets()})
+
+
+@app.route("/presets/<path:name>", methods=["PUT"])
+def save_preset(name):
+    cleaned_name = _clean_preset_name(name)
+    cleaned_bands = _clean_bands(request.get_json(silent=True))
+    if cleaned_name is None or cleaned_bands is None:
+        return jsonify({"error": "invalid preset"}), 400
+    with _preset_lock:
+        presets = _read_presets()
+        presets[cleaned_name] = cleaned_bands
+        _write_presets(presets)
+    return jsonify({"ok": True, "name": cleaned_name})
+
+
+@app.route("/presets/<path:name>", methods=["DELETE"])
+def delete_preset(name):
+    cleaned_name = _clean_preset_name(name)
+    if cleaned_name is None:
+        return jsonify({"error": "invalid name"}), 400
+    with _preset_lock:
+        presets = _read_presets()
+        presets.pop(cleaned_name, None)
+        _write_presets(presets)
+    return jsonify({"ok": True})
 
 @app.route("/health", methods=["GET"])
 def health():

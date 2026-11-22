@@ -37,6 +37,7 @@ fi
 if ! id denon >/dev/null 2>&1; then
   useradd --system --home-dir "$APP_DIR" --shell /usr/sbin/nologin denon
 fi
+install -d -o denon -g denon -m 0750 /var/lib/tx-denon-tools
 
 chown -R denon:denon "$APP_DIR"
 
