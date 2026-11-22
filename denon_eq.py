@@ -3,6 +3,7 @@ from flask_cors import CORS
 import json
 import os
 import threading
+import xml.etree.ElementTree as ET
 from pathlib import Path
 import requests, urllib.parse, time
 import urllib3
@@ -20,6 +21,17 @@ LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "80"))
 RECV_BASE = f"https://{RECV_HOST}:{RECV_PORT}"
 PRESET_PATH = Path(os.environ.get("PRESET_PATH", "/var/lib/tx-denon-tools/presets.json"))
 BANDS = ("63", "125", "250", "500", "1k", "2k", "4k", "8k", "16k")
+BAND_TAGS = {
+    "63": "Eq63Hz",
+    "125": "Eq125Hz",
+    "250": "Eq250Hz",
+    "500": "Eq500Hz",
+    "1k": "Eq1kHz",
+    "2k": "Eq2kHz",
+    "4k": "Eq4kHz",
+    "8k": "Eq8kHz",
+    "16k": "Eq16kHz",
+}
 _preset_lock = threading.Lock()
 
 # Mapping: unsere dB-Werte (-20..+6) direkt auf Denon-Rohwert (-200..+60)
@@ -48,6 +60,27 @@ def build_graphic_eq_payload(band_values):
     )
     return xml
 
+def read_graphic_eq():
+    ts = str(int(time.time() * 1000))
+    url = f"{RECV_BASE}/ajax/audio/get_config?type=10&_={ts}"
+    response = requests.get(url, timeout=5, verify=False)
+    response.raise_for_status()
+    root = ET.fromstring(response.text)
+    adjust = None
+    for node in root.iter("AdjustEQ"):
+        if node.find("Eq63Hz") is not None:
+            adjust = node
+            break
+    if adjust is None:
+        raise ValueError("graphic EQ response has no band values")
+    bands = {}
+    for key, tag in BAND_TAGS.items():
+        raw = adjust.findtext(tag)
+        if raw is None or raw == "":
+            raise ValueError(f"missing {tag}")
+        bands[key] = int(raw) / 10.0
+    return bands
+
 def send_to_receiver(payload_xml):
     encoded = urllib.parse.quote(payload_xml, safe='')
     ts = str(int(time.time() * 1000))
@@ -57,6 +90,16 @@ def send_to_receiver(payload_xml):
         return {"url": url, "status_code": r.status_code, "text": r.text}
     except Exception as e:
         return {"url": url, "error": str(e)}
+
+@app.route("/eq", methods=["GET"])
+def get_eq():
+    if not RECV_HOST:
+        return jsonify({"error": "receiver not configured"}), 503
+    try:
+        bands = read_graphic_eq()
+    except Exception:
+        return jsonify({"error": "receiver unreachable"}), 502
+    return jsonify({"bands": bands})
 
 @app.route("/set_eq", methods=["POST"])
 def set_eq():
@@ -643,28 +686,38 @@ function initPresetsUI(){
   }
 }
 
-function applyPreset(values){
-  // Werte übernehmen
+function showValues(values){
   Object.keys(currentValues).forEach(k=>{
     if(typeof values[k] === 'number'){
       currentValues[k] = values[k];
     }
   });
+  syncUIFromCurrentValues();
+}
 
-  // UI aktualisieren
-  bands.forEach(b=>{
-    const v = currentValues[b.key];
-    const slider = document.querySelector(`input[type="range"][data-band="${b.key}"]`);
-    if(!slider) return;
-    slider.value = v;
-    const valEl = slider.parentElement.parentElement.nextSibling;
-    if(valEl) valEl.textContent = v.toFixed(1)+' dB';
-    updateValueLine(slider, v);
-  });
-
-  // Senden
+function applyPreset(values){
+  showValues(values);
   lastSentSnapshot = null;
   sendAll();
+}
+
+function loadReceiverValues(){
+  statusEl.textContent = 'Lese Pegel vom Receiver…';
+  statusEl.classList.remove('err');
+  fetch('/eq').then(async r=>{
+    if(!r.ok) throw new Error('HTTP ' + r.status);
+    const data = await r.json();
+    if(!data || !data.bands) throw new Error('keine Pegel');
+    showValues(data.bands);
+    lastSentSnapshot = JSON.stringify(currentValues);
+    statusEl.textContent = 'Bereit. Änderungen werden an den Receiver gesendet.';
+  }).catch(()=>{
+    loadLastValuesFromStorage();
+    syncUIFromCurrentValues();
+    lastSentSnapshot = JSON.stringify(currentValues);
+    statusEl.textContent = 'Pegel vom Receiver nicht lesbar.';
+    statusEl.classList.add('err');
+  });
 }
 
 function loadLastValuesFromStorage(){
@@ -697,9 +750,9 @@ function syncUIFromCurrentValues(){
 }
 
 /* Start */
-loadLastValuesFromStorage();
 buildUI();
 syncUIFromCurrentValues();
+loadReceiverValues();
 initPresetsUI();
 </script>
 </body>
