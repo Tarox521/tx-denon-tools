@@ -1,0 +1,16 @@
+[Unit]
+Description=Denon EQ Flask Server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=denon
+Group=denon
+WorkingDirectory=/opt/tx-denon-tools
+EnvironmentFile=/etc/denon-eq.env
+ExecStart=/opt/tx-denon-tools/venv/bin/python3 /opt/tx-denon-tools/denon_eq.py
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
