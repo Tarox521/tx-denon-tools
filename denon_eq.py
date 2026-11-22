@@ -13,7 +13,7 @@ CORS(app)
 RECV_HOST = os.environ.get("DENON_HOST", "172.16.2.121")
 RECV_PORT = int(os.environ.get("DENON_PORT", "10443"))
 LISTEN_HOST = os.environ.get("LISTEN_HOST", "0.0.0.0")
-LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "8088"))
+LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "80"))
 RECV_BASE = f"https://{RECV_HOST}:{RECV_PORT}"
 
 # Mapping: unsere dB-Werte (-20..+6) direkt auf Denon-Rohwert (-200..+60)

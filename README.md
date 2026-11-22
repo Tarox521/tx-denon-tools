@@ -1,6 +1,6 @@
 # TX Denon Tools
 
-Web mixer for the Denon graphic EQ. A small Flask app sends the band values to the receiver's own HTTPS API and serves the fader UI on port 8088.
+Web mixer for the Denon graphic EQ. A small Flask app sends the band values to the receiver's own HTTPS API and serves the fader UI on port 80, so the browser needs no port in the address.
 
 Presets stay in the browser (`localStorage`). The server only forwards the current bands.
 
@@ -38,7 +38,7 @@ This repo does not change `epnlsrv`. `deploy/install.sh` installs a second copy 
 DENON_HOST=172.16.2.121
 DENON_PORT=10443
 LISTEN_HOST=0.0.0.0
-LISTEN_PORT=8088
+LISTEN_PORT=80
 ```
 
 After an edit: `systemctl restart denon-eq`.
@@ -87,7 +87,7 @@ cd tx-denon-tools
 DENON_HOST=172.16.2.121 bash deploy/install.sh
 ```
 
-The service runs as the system user `denon`. UI: `http://<host>:8088/`. Health check: `http://<host>:8088/health`.
+The service runs as the system user `denon` and is allowed to bind port 80. UI: `http://<host>/`. Health check: `http://<host>/health`.
 
 ```bash
 journalctl -u denon-eq -f

@@ -6,6 +6,9 @@ Wants=network-online.target
 [Service]
 User=denon
 Group=denon
+# Port 80 is privileged. This lets the service user bind it without running as root.
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
 WorkingDirectory=/opt/tx-denon-tools
 EnvironmentFile=/etc/denon-eq.env
 ExecStart=/opt/tx-denon-tools/venv/bin/python3 /opt/tx-denon-tools/denon_eq.py

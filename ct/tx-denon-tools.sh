@@ -201,8 +201,8 @@ $APP is installed.
   CTID:       $CTID
   Hostname:   $var_hostname
   Root pass:  $CT_PASSWORD
-  UI:         http://${ip:-<container-ip>}:8088/
-  Health:     http://${ip:-<container-ip>}:8088/health
+  UI:         http://${ip:-<container-ip>}/
+  Health:     http://${ip:-<container-ip>}/health
   Receiver:   https://${DENON_HOST}:${DENON_PORT}
   Config:     pct exec $CTID -- editor /etc/denon-eq.env
   Logs:       pct exec $CTID -- journalctl -u denon-eq -f
