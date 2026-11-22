@@ -111,8 +111,8 @@ if(location.protocol === "file:"){
     const respond = (data, status=200) => ({ok:status<300, status, json:async()=>data, text:async()=>JSON.stringify(data)});
     if(target.startsWith("/eq")) return respond({bands:{"63":1.5,"125":0,"250":-1,"500":-2,"1k":-0.5,"2k":0,"4k":1,"8k":2,"16k":0.5}});
     if(target.startsWith("/levels")) return respond({channels:[
-      {id:"0",name:"Front L",db:-2.5},{id:"1",name:"Center",db:-4},{id:"2",name:"Front R",db:-2.5},
-      {id:"4",name:"Surround R",db:-2.5},{id:"5",name:"Surround Back R",db:6},{id:"7",name:"Surround Back L",db:6},{id:"8",name:"Surround L",db:-2.5}
+      {id:"7",name:"SBL",db:6},{id:"8",name:"SL",db:-2.5},{id:"0",name:"FL",db:-2.5},
+      {id:"1",name:"C",db:-4},{id:"2",name:"FR",db:-2.5},{id:"4",name:"SR",db:-2.5},{id:"5",name:"SBR",db:6}
     ], min:-12, max:12, step:0.5});
     if(target.startsWith("/volume")){
       if(method === "POST" && body) Object.assign(previewVolume, body);

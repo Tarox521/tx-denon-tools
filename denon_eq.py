@@ -33,17 +33,15 @@ BAND_TAGS = {
     "16k": "Eq16kHz",
 }
 SPEAKER_NAMES = {
-    "0": "Front L",
-    "1": "Center",
-    "2": "Front R",
-    "3": "Front Wide R",
-    "4": "Surround R",
-    "5": "Surround Back R",
-    "6": "Surround Back",
-    "7": "Surround Back L",
-    "8": "Surround L",
-    "9": "Front Wide L",
+    "7": "SBL",
+    "8": "SL",
+    "0": "FL",
+    "1": "C",
+    "2": "FR",
+    "4": "SR",
+    "5": "SBR",
 }
+SPEAKER_ORDER = ("7", "8", "0", "1", "2", "4", "5")
 PAGE_PATH = Path(__file__).with_name("web") / "index.html"
 _preset_lock = threading.Lock()
 
@@ -114,7 +112,8 @@ def read_levels():
             "name": SPEAKER_NAMES.get(str(int(index)), f"Kanal {int(index)}"),
             "db": int(raw) / 10.0,
         })
-    channels.sort(key=lambda channel: int(channel["id"]))
+    order = {speaker_id: position for position, speaker_id in enumerate(SPEAKER_ORDER)}
+    channels.sort(key=lambda channel: (order.get(channel["id"], len(SPEAKER_ORDER)), int(channel["id"])))
     return channels
 
 def write_levels(values):
@@ -135,14 +134,12 @@ def read_volume():
     }
 
 def write_volume(volume=None, mute=None):
-    inner = ""
+    # The control API takes a single tag. Wrapping it in MainZone is ignored.
     if volume is not None:
-        inner += f"<Volume>{int(round(float(volume) * 10))}</Volume>"
+        raw = int(round(float(volume) * 10))
+        receiver_request("/ajax/control/set_config", {"type": 1, "data": f"<Volume>{raw}</Volume>"})
     if mute is not None:
-        inner += f"<Mute>{1 if mute else 2}</Mute>"
-    if not inner:
-        raise ValueError("nothing to set")
-    receiver_request("/ajax/control/set_config", {"type": 1, "data": f"<MainZone>{inner}</MainZone>"})
+        receiver_request("/ajax/control/set_config", {"type": 1, "data": f"<Mute>{1 if mute else 2}</Mute>"})
 
 def send_to_receiver(payload_xml):
     encoded = urllib.parse.quote(payload_xml, safe='')
