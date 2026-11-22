@@ -9,8 +9,8 @@ urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 app = Flask(__name__)
 CORS(app)
 
-# Receiver. Defaults match the original host on epnlsrv.
-RECV_HOST = os.environ.get("DENON_HOST", "172.16.2.121")
+# Receiver address comes from the environment. The port default is the Denon HTTPS API.
+RECV_HOST = os.environ.get("DENON_HOST", "").strip()
 RECV_PORT = int(os.environ.get("DENON_PORT", "10443"))
 LISTEN_HOST = os.environ.get("LISTEN_HOST", "0.0.0.0")
 LISTEN_PORT = int(os.environ.get("LISTEN_PORT", "80"))
@@ -684,5 +684,7 @@ def health():
     return jsonify({"ok": True, "receiver": f"{RECV_HOST}:{RECV_PORT}"})
 
 if __name__ == "__main__":
+    if not RECV_HOST:
+        raise SystemExit("DENON_HOST is empty. Set the receiver address in /etc/denon-eq.env.")
     print(f"Bridge läuft auf http://{LISTEN_HOST}:{LISTEN_PORT} — Receiver https://{RECV_HOST}:{RECV_PORT}")
     app.run(host=LISTEN_HOST, port=LISTEN_PORT)

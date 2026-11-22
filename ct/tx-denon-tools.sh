@@ -21,7 +21,7 @@ var_unprivileged="${var_unprivileged:-1}"
 var_template_storage="${var_template_storage:-local}"
 var_container_storage="${var_container_storage:-}"
 var_tags="${var_tags:-audio;denon}"
-DENON_HOST="${DENON_HOST:-172.16.2.121}"
+DENON_HOST="${DENON_HOST:-}"
 DENON_PORT="${DENON_PORT:-10443}"
 # Public clone URL. Export GITHUB_REPO to override.
 GITHUB_REPO="${GITHUB_REPO:-https://github.com/Tarox521/tx-denon-tools.git}"
@@ -43,13 +43,29 @@ prompt() {
   local varname="$1"
   local label="$2"
   local current="$3"
+  local required="${4:-0}"
   if [[ "${NONINTERACTIVE:-0}" == "1" || ! -r /dev/tty ]]; then
+    if [[ "$required" == "1" && -z "$current" ]]; then
+      echo "$label is required. Export $varname=... before running." >&2
+      exit 1
+    fi
     printf -v "$varname" '%s' "$current"
     return
   fi
   local input
-  read -rp "$label [$current]: " input </dev/tty || true
-  printf -v "$varname" '%s' "${input:-$current}"
+  while true; do
+    if [[ -n "$current" ]]; then
+      read -rp "$label [$current]: " input </dev/tty || true
+      input="${input:-$current}"
+    else
+      read -rp "$label: " input </dev/tty || true
+    fi
+    if [[ -n "$input" || "$required" != "1" ]]; then
+      printf -v "$varname" '%s' "$input"
+      return
+    fi
+    echo "Enter a value." >/dev/tty
+  done
 }
 
 detect_rootfs_storage() {
@@ -155,7 +171,7 @@ create_ct() {
     prompt var_gw "Gateway" "$var_gw"
   fi
   prompt var_container_storage "Rootfs storage" "$var_container_storage"
-  prompt DENON_HOST "Denon host" "$DENON_HOST"
+  prompt DENON_HOST "Denon host" "$DENON_HOST" 1
   prompt DENON_PORT "Denon port" "$DENON_PORT"
 
   if pct status "$CTID" >/dev/null 2>&1; then

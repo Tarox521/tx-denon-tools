@@ -67,6 +67,11 @@ set_env DENON_PORT "${DENON_PORT:-}"
 set_env LISTEN_HOST "${LISTEN_HOST:-}"
 set_env LISTEN_PORT "${LISTEN_PORT:-}"
 
+if ! grep -Eq '^DENON_HOST=.+' "$ENV_FILE"; then
+  echo "DENON_HOST is empty in $ENV_FILE. Pass DENON_HOST=<receiver-ip>." >&2
+  exit 1
+fi
+
 systemctl daemon-reload
 systemctl enable denon-eq.service
 systemctl restart denon-eq.service

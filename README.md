@@ -35,7 +35,7 @@ This repo does not change `epnlsrv`. `deploy/install.sh` installs a second copy 
 `/etc/denon-eq.env`:
 
 ```
-DENON_HOST=172.16.2.121
+DENON_HOST=
 DENON_PORT=10443
 LISTEN_HOST=0.0.0.0
 LISTEN_PORT=80
@@ -62,7 +62,7 @@ Useful overrides, all optional:
 | `var_gw` | empty | Gateway, required for a static address |
 | `var_container_storage` | `local-lvm`, else first rootdir storage | Disk pool |
 | `var_template_storage` | `local` | Storage that holds appliance templates |
-| `DENON_HOST` | `172.16.2.121` | Receiver |
+| `DENON_HOST` | empty, must be entered | Receiver address |
 | `DENON_PORT` | `10443` | Receiver HTTPS port |
 | `NONINTERACTIVE` | `0` | Set to `1` to skip prompts |
 
@@ -84,7 +84,7 @@ bash -c "$(curl -fsSL https://raw.githubusercontent.com/Tarox521/tx-denon-tools/
 ```bash
 git clone https://github.com/Tarox521/tx-denon-tools.git
 cd tx-denon-tools
-DENON_HOST=172.16.2.121 bash deploy/install.sh
+DENON_HOST=192.0.2.10 bash deploy/install.sh
 ```
 
 The service runs as the system user `denon` and is allowed to bind port 80. UI: `http://<host>/`. Health check: `http://<host>/health`.
