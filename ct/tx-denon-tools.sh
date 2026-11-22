@@ -227,11 +227,10 @@ update_ct() {
   say "Updated CT $ctid"
 }
 
-# bash -c "$(curl ...)" does not set BASH_SOURCE; a checkout on disk does.
-SCRIPT_PATH="${BASH_SOURCE[0]:-}"
+# bash -c "$(curl ...)" sets $0 to "bash". A file path means a local checkout.
 REPO_ROOT=""
-if [[ -f "$SCRIPT_PATH" ]]; then
-  SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+if [[ "${0:-}" != bash && "${0:-}" != -bash && -f "${0:-}" ]]; then
+  SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
   if [[ -f "$SCRIPT_DIR/../denon_eq.py" && -f "$SCRIPT_DIR/../deploy/install.sh" ]]; then
     REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd)"
   fi
