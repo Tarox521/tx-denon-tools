@@ -227,7 +227,8 @@ update_ct() {
   say "Updated CT $ctid"
 }
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
+# bash -c "$(curl ...)" does not set BASH_SOURCE; a checkout on disk does.
+SCRIPT_PATH="${BASH_SOURCE[0]:-}"
 REPO_ROOT=""
 if [[ -f "$SCRIPT_PATH" ]]; then
   SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
